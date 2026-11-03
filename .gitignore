@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+_site/
+work/
+working-data.json
+next-data.json
