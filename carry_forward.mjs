@@ -16,7 +16,7 @@ export function mergePublishedSnapshot(current,previous){
 
 export function assertUnpublishedHistory(histories){
   if(!Array.isArray(histories))throw new Error('Invalid deployment history.');
-  const unpublished=new Set(['pending','queued','in_progress','failure','error']);
+  const unpublished=new Set(['pending','waiting','queued','in_progress','failure','error']);
   for(const statuses of histories){
     if(!Array.isArray(statuses))throw new Error('Invalid deployment statuses.');
     for(const status of statuses)if(!status||!unpublished.has(status.state))throw new Error('Prior successful, inactive or unknown deployment exists; missing published data requires review.');
