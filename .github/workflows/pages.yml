@@ -1,0 +1,55 @@
+name: Publish Midterm Desk
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '3-58/5 * * * *'
+
+permissions:
+  contents: read
+  deployments: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: midterm-desk-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify state, admission and last-good preservation
+        run: node --test model.test.mjs carry_forward.test.mjs
+      - name: Verify result adapters
+        run: python -m unittest discover -s . -p test_update_results.py
+      - name: Configure Pages
+        uses: actions/configure-pages@v6.0.0
+      - name: Carry forward last published result components
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node carry_forward.mjs --input data.json --output working-data.json
+      - name: Read and validate public result sources
+        run: python update_results.py --input working-data.json --output next-data.json
+      - name: Package exact candidate and public metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node make_release.mjs --data next-data.json --out _site
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: _site
+          retention-days: 1
+      - name: Deploy Pages
+        id: deploy
+        uses: actions/deploy-pages@v5.0.1
