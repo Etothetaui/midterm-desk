@@ -7,7 +7,7 @@ export function mergePublishedSnapshot(current,previous){
   // This release changes presentation, not the schema-1 result contract.
   // Admit the explicitly supported predecessor while validating all its fields;
   // never discard already-published votes just because the software upgraded.
-  if(previous?.schemaVersion===1&&['v0.0.0-dev','v0.1.0-dev','v0.1.1-dev'].includes(previous.version)&&VERSION==='v0.1.2-dev')previous={...previous,version:VERSION};
+  if(previous?.schemaVersion===1&&['v0.0.0-dev','v0.1.0-dev','v0.1.1-dev','v0.1.2-dev'].includes(previous.version)&&VERSION==='v0.1.3-dev')previous={...previous,version:VERSION};
   for(const [label,value]of [['current',current],['previous',previous]]){const result=validateSnapshot(value,{requireCompleteCatalog:true});if(!result.ok)throw new Error(`${label} snapshot rejected: ${result.errors.join('; ')}`);}
   const output=structuredClone(current);
   const byId=new Map(previous.races.map(r=>[r.id,r]));

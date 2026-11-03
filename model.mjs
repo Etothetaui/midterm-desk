@@ -1,5 +1,5 @@
 import {validateAPSource} from './ap-source.mjs';
-export const VERSION = 'v0.1.2-dev';
+export const VERSION = 'v0.1.3-dev';
 export const PARTY_ORDER = Object.freeze(['D', 'R', 'I', 'L', 'G', 'OTHER']);
 
 const OFFICES = ['all', 'house', 'senate', 'governor'];

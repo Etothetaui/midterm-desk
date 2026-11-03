@@ -1,5 +1,9 @@
 # Changes
 
+## v0.1.3-dev — November 3, 2026
+
+Add a news ticker above the page header. Incoming validated vote totals, civicAPI projections/withdrawals, AP public announcements, candidate corrections and polling/model changes generate attributed headlines. A new publication without changed totals is labeled explicitly; routine checks never masquerade as new votes. Preserve all existing sources and features. The ticker scrolls on new updates, retains the latest40 headlines with source links and receipt times, supports stopping motion and reduced-motion preferences, and holds incoming display changes behind the dashboard's existing Pause/Resume controls. Preserve published results and AP observation history when upgrading from v0.1.2-dev.
+
 ## v0.1.2-dev — November 3, 2026
 
 Add a free AP public-announcement monitor while preserving every existing source and feature. Pin AP's verified Bluesky identity, classify only unambiguous current-election winner announcements, retain source links/publication times and observation history, and label partial coverage. Check from the open browser and during the existing publication pipeline. Separate observed AP announcements from civicAPI projections, forecasts, counts and certification. Preserve last-good observations on failures and across upgrades; missing posts do not retract calls. Queue AP display updates behind Pause/Resume. Synthetic parser and preservation tests supplement the existing regression suite; no genuine positive AP announcement has yet been admitted in the pre-close source capture.

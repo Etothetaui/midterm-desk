@@ -13,7 +13,7 @@ const dataPath=path.resolve(arg('--data')||path.join(root,'data.json'));
 // The publication entry point verifies every adapter and view contract, even
 // when invoked by the established Pages workflow. No test fixtures are packed.
 if(process.env.GITHUB_ACTIONS==='true'){
-  execFileSync(process.execPath,['--test','model.test.mjs','carry_forward.test.mjs','analysis.test.mjs','big-board.test.mjs','ap-source.test.mjs'],{cwd:root,stdio:'inherit'});
+  execFileSync(process.execPath,['--test','model.test.mjs','carry_forward.test.mjs','analysis.test.mjs','big-board.test.mjs','ap-source.test.mjs','news-ticker.test.mjs'],{cwd:root,stdio:'inherit'});
   execFileSync('python',['-m','unittest','discover','-s','.','-p','test_update*.py'],{cwd:root,stdio:'inherit'});
   execFileSync(process.execPath,['verify_release.mjs'],{cwd:root,stdio:'inherit'});
 }
@@ -28,7 +28,7 @@ const hash=value=>createHash('sha256').update(value).digest('hex');
 const analysis=JSON.parse(await readFile(path.join(root,'analysis.json'),'utf8'));
 const analysisCheck=validateAnalysis(analysis,data);
 if(!analysisCheck.ok)throw new Error('Analysis release rejected: '+analysisCheck.errors.join('; '));
-const files=['index.html','styles.css','big-board.css','app.mjs','model.mjs','analysis-ui.mjs','big-board.mjs','ap-source.mjs','ap-ui.mjs','analysis.json','analysis-health.json','us-map.json','counties.json','US-ATLAS-LICENSE.txt','HISTORICAL-DATA-LICENSE.txt','README.md','DATA-SOURCES.md','METHODOLOGY.md','CHANGELOG.md'];
+const files=['index.html','styles.css','big-board.css','app.mjs','model.mjs','analysis-ui.mjs','big-board.mjs','ap-source.mjs','ap-ui.mjs','news-ticker.mjs','analysis.json','analysis-health.json','us-map.json','counties.json','US-ATLAS-LICENSE.txt','HISTORICAL-DATA-LICENSE.txt','README.md','DATA-SOURCES.md','METHODOLOGY.md','CHANGELOG.md'];
 await mkdir(output,{recursive:true});
 const hashes={};
 for(const name of files){const body=await readFile(path.join(root,name));hashes[name]=hash(body);await writeFile(path.join(output,name),body);}
