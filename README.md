@@ -1,6 +1,6 @@
 # Midterm Desk
 
-**v0.1.0-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
+**v0.1.1-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
 
 Explore every state House seat, Senate contest and state governor contest, plus delegate and territorial governor contests in separate denominators. The catalog contains 514 contest records with source-attributed candidate inventories. Browse the race board and geographic tiles, compare candidates and reported finances, inspect individual polling, save a local watchlist, and build a clearly separate hypothetical seat scenario.
 

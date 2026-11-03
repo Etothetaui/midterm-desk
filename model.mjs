@@ -1,4 +1,4 @@
-export const VERSION = 'v0.1.0-dev';
+export const VERSION = 'v0.1.1-dev';
 export const PARTY_ORDER = Object.freeze(['D', 'R', 'I', 'L', 'G', 'OTHER']);
 
 const OFFICES = ['all', 'house', 'senate', 'governor'];

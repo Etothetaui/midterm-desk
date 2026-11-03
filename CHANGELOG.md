@@ -1,5 +1,9 @@
 # Changes
 
+## v0.1.1-dev — November 3, 2026
+
+Fix the clean-checkout publication check: analytical tests create their temporary workspace independently, without relying on development capture directories or test order. Verify all 70 JavaScript and 87 Python checks from an isolated source-only checkout. Preserve validated results from both prior development versions during software upgrades. The v0.1.0-dev source commit was retained, but its hosted packaging check prevented deployment; this patch completes that release.
+
 ## v0.1.0-dev — November 3, 2026
 
 Substantive election analysis and election-night tools, following v0.0.0-dev.

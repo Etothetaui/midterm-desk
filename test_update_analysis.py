@@ -168,7 +168,7 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(rows[1]['houseLow80'], 218)
 
     def test_failed_refresh_preserves_last_good_file_byte_for_byte(self):
-        scratch = APP.parents[2] / 'work' / 'source-data' / 'rebuild'
+        scratch = APP / 'work' / 'test-temp'
         scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
             self.assertTrue(Path(directory).resolve().is_relative_to(scratch.resolve()))
@@ -201,7 +201,8 @@ class AnalysisTests(unittest.TestCase):
         self.assertFalse(update.retain_national(self.build(), self.admitted, changed))
 
     def test_allow_stale_reports_failure_without_mutating_last_good(self):
-        scratch = APP.parents[2] / 'work' / 'source-data' / 'rebuild'
+        scratch = APP / 'work' / 'test-temp'
+        scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
             self.assertTrue(Path(directory).resolve().is_relative_to(scratch.resolve()))
             output = Path(directory) / 'analysis.json'
@@ -222,7 +223,8 @@ class AnalysisTests(unittest.TestCase):
                 self.assertEqual(update.main(['--source-dir', directory, '--fetch', '--allow-stale', '--catalog', str(catalog), '--output', str(output)]), 1)
 
     def test_fresh_checkout_fetch_without_work_capture_preserves_all_history(self):
-        scratch = APP.parents[2] / 'work' / 'source-data' / 'rebuild'
+        scratch = APP / 'work' / 'test-temp'
+        scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
             self.assertTrue(Path(directory).resolve().is_relative_to(scratch.resolve()))
             output = Path(directory) / 'analysis.json'
