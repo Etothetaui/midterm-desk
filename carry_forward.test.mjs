@@ -1,8 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {mergePublishedSnapshot} from './carry_forward.mjs';
+import {mergePublishedSnapshot,assertUnpublishedHistory} from './carry_forward.mjs';
 const base=JSON.parse(await readFile(new URL('./data.json',import.meta.url),'utf8'));
+test('first-run pending and failed deployments do not impersonate a published site',()=>{
+  assert.doesNotThrow(()=>assertUnpublishedHistory([[{state:'in_progress'},{state:'queued'}],[{state:'failure'}],[]]));
+});
+test('any earlier success or inactive state prevents missing-site reset even after a later failure',()=>{
+  for(const state of ['success','inactive','unknown',null])assert.throws(()=>assertUnpublishedHistory([[{state:'failure'},{state}]]));
+  assert.throws(()=>assertUnpublishedHistory([null]));
+});
 // Synthetic counts are confined to cloned fixtures and never written to app data.
 test('retains valid published counts and correction history without replacing corrected metadata',()=>{
   const previous=structuredClone(base),current=structuredClone(base);
