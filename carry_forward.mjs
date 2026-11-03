@@ -7,7 +7,7 @@ export function mergePublishedSnapshot(current,previous){
   // This release changes presentation, not the schema-1 result contract.
   // Admit the explicitly supported predecessor while validating all its fields;
   // never discard already-published votes just because the software upgraded.
-  if(previous?.schemaVersion===1&&['v0.0.0-dev','v0.1.0-dev'].includes(previous.version)&&VERSION==='v0.1.1-dev')previous={...previous,version:VERSION};
+  if(previous?.schemaVersion===1&&['v0.0.0-dev','v0.1.0-dev','v0.1.1-dev'].includes(previous.version)&&VERSION==='v0.1.2-dev')previous={...previous,version:VERSION};
   for(const [label,value]of [['current',current],['previous',previous]]){const result=validateSnapshot(value,{requireCompleteCatalog:true});if(!result.ok)throw new Error(`${label} snapshot rejected: ${result.errors.join('; ')}`);}
   const output=structuredClone(current);
   const byId=new Map(previous.races.map(r=>[r.id,r]));
@@ -18,6 +18,8 @@ export function mergePublishedSnapshot(current,previous){
   // Carry them too, otherwise a failed next fetch could reset visible counts
   // to the repository's pre-reporting seed while canonical counts survive.
   if(previous.nationalResultRecords)output.nationalResultRecords=structuredClone(previous.nationalResultRecords);
+  // AP observations retain their own provenance and withdrawal history.
+  if(previous.apPublicSource)output.apPublicSource=structuredClone(previous.apPublicSource);
   const result=validateSnapshot(output,{requireCompleteCatalog:true});if(!result.ok)throw new Error('Merged snapshot rejected: '+result.errors.join('; '));
   return {snapshot:output,retained};
 }

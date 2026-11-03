@@ -1,5 +1,7 @@
 # Reading Midterm Desk
 
+AP public announcements form a separate observation history. A strict shared browser/publication parser requires AP's verified pinned account, a current publication timestamp, one affirmative winner statement and a unique candidate/office/state/seat match. It does not infer winners from counts, polls or other publishers. Only explicitly supported withdrawals change an observation to withdrawn; deletion or source failure cannot establish a retraction. Source failures preserve last-good observations, with warnings. Because AP can update its licensed feed without posting a social correction, the history does not establish AP's complete current call state. Public-announcement counts are not a comprehensive AP chamber-control tally. Synthetic parser tests establish supported patterns and rejection boundaries; the pre-close real feed contains no positive winner observation to validate against.
+
 Counts, forecasts, polls and scenarios answer different questions. A forecast favorite or a numerical leader is not a race call. No unavailable number is replaced with zero.
 
 ## Forecasts and control

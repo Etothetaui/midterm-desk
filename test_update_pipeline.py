@@ -38,6 +38,34 @@ def fake_loader(calls):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_ap_stage_cannot_change_any_existing_source_and_process_failure_retains_observations(self):
+        original = catalog()
+        original['apPublicSource'] = {'observations': {'synthetic': {'status': 'called'}}, 'checkedAt': None,
+                                     'errorCode': 'rate-limited', 'retryAfterAt': '2026-11-04T06:00:00Z'}
+        def substituted(args, **kwargs):
+            value = json.loads(Path(args[-2]).read_text(encoding='utf-8'))
+            value['races'] = []
+            Path(args[-1]).write_text(json.dumps(value), encoding='utf-8')
+            return SimpleNamespace(returncode=0)
+        for runner in [substituted, lambda *a, **k: (_ for _ in ()).throw(OSError('synthetic offline'))]:
+            result = pipeline.refresh_ap(original, runner=runner)
+            self.assertEqual(result['races'], original['races'])
+            self.assertEqual(result['apPublicSource']['observations'], original['apPublicSource']['observations'])
+            self.assertEqual(result['apPublicSource']['status'], 'retained-error')
+            self.assertIsNone(result['apPublicSource']['retryAfterAt'])
+            self.assertNotIn('status', original['apPublicSource'])
+
+    def test_ap_stage_runs_after_count_validation_and_before_analysis(self):
+        seen = []
+        def ap_stage(value):
+            self.assertIn('nationalResultRecords', value)
+            seen.append('ap')
+            return {**value, 'apPublicSource': {'synthetic': True}}
+        result = pipeline.run_pipeline(catalog(), fake_loader([]), ap_refresher=ap_stage,
+                                       analysis_refresher=lambda value: seen.append(('analysis', value['apPublicSource'])))
+        self.assertEqual(seen, ['ap', ('analysis', {'synthetic': True})])
+        self.assertEqual(result['apPublicSource'], {'synthetic': True})
+
     def test_real_stage_order_one_fetch_each_and_diagnostic_failure_does_not_abort(self):
         calls, analytics = [], []
         original = catalog()

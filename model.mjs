@@ -1,4 +1,5 @@
-export const VERSION = 'v0.1.1-dev';
+import {validateAPSource} from './ap-source.mjs';
+export const VERSION = 'v0.1.2-dev';
 export const PARTY_ORDER = Object.freeze(['D', 'R', 'I', 'L', 'G', 'OTHER']);
 
 const OFFICES = ['all', 'house', 'senate', 'governor'];
@@ -280,6 +281,7 @@ export function validateSnapshot(data, {requireCompleteCatalog = false} = {}) {
     if (!['D','R','I'].every(key => count(carry[key])) || !Array.isArray(carry.sources) || !carry.sources.length) fail('Verified Senate carryover needs counts and evidence.');
     else if (carry.D + carry.R + carry.I + scenarioUniverse(data, 'senate').races.length !== 100) fail('Verified Senate baseline must reconcile to 100 seats.');
   }
+  if(data.apPublicSource!==undefined){const ap=validateAPSource(data.apPublicSource,data);for(const message of ap.errors)fail('AP public source: '+message);}
   if (requireCompleteCatalog) {
     const identity = catalogIdentity(data.races);
     for (const id of identity.missing) fail(`Complete catalog missing canonical contest: ${id}.`);

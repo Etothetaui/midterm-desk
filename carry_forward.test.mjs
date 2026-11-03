@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {mergePublishedSnapshot,assertUnpublishedHistory} from './carry_forward.mjs';
 const base=JSON.parse(await readFile(new URL('./data.json',import.meta.url),'utf8'));
+test('AP announcement history survives publication independently of every vote source',()=>{
+  const previous=structuredClone(base),race=previous.races.find(r=>r.id==='MI-S-regular'),candidate=race.candidates[0];
+  const did='did:plc:a67zdrt4nl2tv2qojpngogbq',key='3maaaaaaaaaaa';
+  const fact={raceId:race.id,candidateId:candidate.id,candidateName:candidate.name,party:candidate.party,state:race.state,office:race.office,district:race.district??null,status:'called',sourceUrl:`https://bsky.app/profile/${did}/post/${key}`,postUri:`at://${did}/app.bsky.feed.post/${key}`,cid:'bafyreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',publishedAt:'2026-11-03T23:00:00Z',observedAt:'2026-11-03T23:05:00Z'};
+  previous.apPublicSource={schemaVersion:1,sourceId:'ap-public-announcements',sourceName:'AP public announcements',coverage:'partial',status:'ready',checkedAt:fact.observedAt,asOf:fact.publishedAt,identity:{did,handle:'apnews.com',verified:true},observations:{[race.id]:{...fact,history:[fact]}},catchup:{pages:1,posts:1,truncated:false},errorCode:null,retryAfterAt:null};
+  const {snapshot}=mergePublishedSnapshot(base,previous);
+  assert.deepEqual(snapshot.apPublicSource,previous.apPublicSource);
+  assert.deepEqual(snapshot.races,base.races);
+  assert.deepEqual(snapshot.nationalResultRecords,base.nationalResultRecords);
+});
 test('supported prior release retains reported votes during software upgrade',()=>{
   const prior=structuredClone(base);prior.version='v0.0.0-dev';const r=prior.races[0];r.results={available:true,sourceUrl:'https://example.test/official',asOf:null,status:'unofficial',votes:r.candidates.map(c=>({candidateId:c.id,votes:10})),call:null,certification:null};
   const merged=mergePublishedSnapshot(base,prior);assert.equal(merged.retained,1);assert.deepEqual(merged.snapshot.races[0].results,r.results);assert.equal(prior.version,'v0.0.0-dev');

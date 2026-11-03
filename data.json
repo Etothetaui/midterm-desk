@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "v0.1.1-dev",
+  "version": "v0.1.2-dev",
   "snapshotId": "results-19509b625459237a",
   "generatedAt": "2026-11-03T20:37:50.734976+00:00",
   "sourceAsOf": null,
@@ -75092,5 +75092,27 @@
       "bodySha256": "21ece463ef567aabea0ad2ed933261b5d7be8d76807ac21c3545ee5f16189167",
       "lastKnownSourceAsOf": "2026-10-23T15:37:21.929Z"
     }
+  },
+  "apPublicSource": {
+    "schemaVersion": 1,
+    "sourceId": "ap-public-announcements",
+    "sourceName": "AP public announcements",
+    "coverage": "partial",
+    "status": "ready",
+    "checkedAt": "2026-11-03T21:19:31.233Z",
+    "asOf": null,
+    "identity": {
+      "did": "did:plc:a67zdrt4nl2tv2qojpngogbq",
+      "handle": "apnews.com",
+      "verified": true
+    },
+    "observations": {},
+    "catchup": {
+      "pages": 1,
+      "posts": 100,
+      "truncated": false
+    },
+    "errorCode": null,
+    "retryAfterAt": null
   }
 }

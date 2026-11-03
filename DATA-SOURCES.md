@@ -1,5 +1,11 @@
 # Election catalog sources
 
+## Additional AP public announcements
+
+The free monitor reads AP's [verified public Bluesky account](https://bsky.app/profile/apnews.com) through Bluesky's [documented public GET API](https://bsky.network/docs/bluesky-api/request-proxying/). Its stable identity is pinned, and profile verification must remain valid. Only AP's own unambiguous general-election winner statements are classified; reposts, quotes, previews, forecasts, nomination/runoff statements and ambiguous identities are excluded. The app publishes normalized factual observations and original-post links, not AP article bodies or full post text. Announcement publication time is separate from the unknown original AP call time. An edited post is tracked by URI and content identity; an ambiguous revision stays flagged for review.
+
+This is **partial public-announcement coverage**. Missing posts, unknown wording, bounded scan gaps, delayed posts and corrections in other AP channels can leave this history incomplete. Absence is not evidence that AP has not called a race. Announcements are media projections, not certification. The comprehensive [AP Elections API requires an authorized access key](https://developer.ap.org/ap-elections-api/docs/Getting_Started.htm); it is not enabled here. No subscription, publisher key or paid source has been added. All previous sources remain connected.
+
 This development snapshot contains 435 regular voting House contests, five separately identified delegate contests, 35 Senate contests, 36 state gubernatorial contests and three territorial gubernatorial contests. All 514 records have named candidate inventories and source links. Exact jurisdiction/seat-set validation is separate from the level of source verification below. A complete independent audit of every official ballot is not claimed.
 
 ## Federal candidate inventory and finances

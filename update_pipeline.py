@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def run_pipeline(snapshot, loader=shared.fetch, *, checked_at=None, reviewed_revisions=None,
-                 include_diagnostic=True, analysis_refresher=None):
+                 include_diagnostic=True, analysis_refresher=None, ap_refresher=None):
     """Injected loaders/analysis callback make ordering and failures testable."""
     checked_at = checked_at or shared.instant()
     output = update_vote_methods(snapshot, loader, checked_at, reviewed_revisions,
@@ -33,9 +33,42 @@ def run_pipeline(snapshot, loader=shared.fetch, *, checked_at=None, reviewed_rev
     output = update_national(output, loader, checked_at, reviewed_revisions)
     validate_vote_methods(output)
     validate_national_records(output)
+    if ap_refresher is not None:
+        output = ap_refresher(output)
     if analysis_refresher is not None:
         analysis_refresher(output)
     return output
+
+
+def refresh_ap(snapshot, *, runner=subprocess.run):
+    """Shared browser/Node AP parser; an AP failure cannot erase other sources.
+
+    Only the AP envelope may change. This prevents an optional public-post
+    monitor from replacing already validated counts, candidates or forecasts.
+    """
+    try:
+        with tempfile.TemporaryDirectory(prefix='midterm-ap-') as directory:
+            source, target = Path(directory) / 'input.json', Path(directory) / 'output.json'
+            shared.atomic_write(source, snapshot)
+            run = runner(['node', str(ROOT / 'update_ap_source.mjs'), str(source), str(target)],
+                         capture_output=True, text=True, encoding='utf-8', timeout=75)
+            if run.returncode != 0 or not target.exists():
+                raise shared.InvalidResults('AP monitor process did not return a snapshot')
+            result = json.loads(target.read_text(encoding='utf-8-sig'))
+            prior_fields = {k: v for k, v in snapshot.items() if k != 'apPublicSource'}
+            next_fields = {k: v for k, v in result.items() if k != 'apPublicSource'}
+            if next_fields != prior_fields or not isinstance(result.get('apPublicSource'), dict):
+                raise shared.InvalidResults('AP monitor attempted to change another source')
+            return result
+    except Exception:
+        # The browser can still check AP directly; preserve every prior source
+        # and expose the last supported AP observations with a failed check.
+        result = dict(snapshot)
+        if isinstance(snapshot.get('apPublicSource'), dict):
+            result['apPublicSource'] = {**snapshot['apPublicSource'],
+                'status': 'retained-error' if snapshot['apPublicSource'].get('observations') else 'error',
+                'checkedAt': shared.instant(), 'errorCode': 'publication-monitor-failed', 'retryAfterAt': None}
+        return result
 
 
 def refresh_analysis(snapshot, analysis_path, health_path, *, runner=subprocess.run, seed_path=None):
@@ -108,6 +141,7 @@ def run_cli_pipeline(snapshot, target, *, input_path=None, probe=False, reviewed
     else:
         analysis_path, health_path = ROOT / "analysis.json", ROOT / "analysis-health.json"
     return run_pipeline(snapshot, loader, reviewed_revisions=reviewed_revisions, include_diagnostic=include_diagnostic,
+                        ap_refresher=refresh_ap,
                         analysis_refresher=lambda result: refresh_analysis(result, analysis_path, health_path,
                             runner=analysis_runner, seed_path=ROOT / "analysis.json" if probe else None))
 

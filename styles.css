@@ -26,3 +26,11 @@ main{padding:0 3% 70px;max-width:3550px;margin:auto}.intro{display:flex;justify-
 @media(min-width:2000px){.analysis-hub-grid .analysis-panel:first-child{columns:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:24px;align-content:start}.analysis-hub-grid .analysis-panel:first-child>h3,.analysis-hub-grid .analysis-panel:first-child>p{grid-column:1/-1}.watch-cohort{min-width:0}.watch-cohort h4{margin-top:14px}}
 
 .called-control-group{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.called-control-heading{grid-column:1/-1;margin:0}.called-control-group .overview-card{min-width:0}@media(max-width:700px){.called-control-group{grid-template-columns:1fr}}
+
+/* Additional AP announcements remain a compact, stable source comparison. */
+.ap-monitor{padding:18px 22px;margin:18px 0;min-height:238px}
+.ap-monitor-heading{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.ap-monitor-heading h3{margin:0}.ap-monitor-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.ap-monitor-cohort{display:flex;flex-direction:column;gap:7px;border-left:2px solid var(--line,#303c4b);padding-left:12px;min-height:46px}
+.ap-race-source{padding:14px 0;margin:14px 0;border-block:1px solid var(--line,#303c4b);min-height:138px}.ap-race-source h4{margin:0 0 10px}.ap-winner{color:#a9dac6}.ap-warning{color:#eec77f}.ap-race-source details{margin-top:10px}
+@media(max-width:600px){.ap-monitor{padding:16px}.ap-monitor-counts{gap:8px}.ap-monitor-cohort{font-size:12px;padding-left:8px}.ap-monitor-cohort .fine{font-size:11px}}

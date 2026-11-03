@@ -1,5 +1,9 @@
 # Changes
 
+## v0.1.2-dev — November 3, 2026
+
+Add a free AP public-announcement monitor while preserving every existing source and feature. Pin AP's verified Bluesky identity, classify only unambiguous current-election winner announcements, retain source links/publication times and observation history, and label partial coverage. Check from the open browser and during the existing publication pipeline. Separate observed AP announcements from civicAPI projections, forecasts, counts and certification. Preserve last-good observations on failures and across upgrades; missing posts do not retract calls. Queue AP display updates behind Pause/Resume. Synthetic parser and preservation tests supplement the existing regression suite; no genuine positive AP announcement has yet been admitted in the pre-close source capture.
+
 ## v0.1.1-dev — November 3, 2026
 
 Fix the clean-checkout publication check: analytical tests create their temporary workspace independently, without relying on development capture directories or test order. Verify all 70 JavaScript and 87 Python checks from an isolated source-only checkout. Preserve validated results from both prior development versions during software upgrades. The v0.1.0-dev source commit was retained, but its hosted packaging check prevented deployment; this patch completes that release.

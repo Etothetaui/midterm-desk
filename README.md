@@ -1,6 +1,6 @@
 # Midterm Desk
 
-**v0.1.1-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
+**v0.1.2-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
 
 Explore every state House seat, Senate contest and state governor contest, plus delegate and territorial governor contests in separate denominators. The catalog contains 514 contest records with source-attributed candidate inventories. Browse the race board and geographic tiles, compare candidates and reported finances, inspect individual polling, save a local watchlist, and build a clearly separate hypothetical seat scenario.
 
@@ -22,6 +22,8 @@ See [methods](METHODOLOGY.md), [changes](CHANGELOG.md) and [data rights](DATA-SO
 
 ## Updates
 
+AP is an additional free source alongside civicAPI and the official adapters. The app checks AP's verified public Bluesky announcements directly about once a minute while open; the publication updater also records them. Only unambiguous current-election winner statements matching the catalog are marked, with an original-post link and publication time. **This is partial public-announcement coverage, not the comprehensive AP Elections feed.** AP may announce other calls or corrections elsewhere; no matching post does not mean uncalled. Failures retain earlier supported observations. Announcements do not certify results or replace other publishers' calls. Live positive classification remains unverified until a genuine current-election announcement is admitted; synthetic parser cases are tested separately. Pause holds displayed AP observations and queues new ones until Resume.
+
 GitHub Actions attempts publication every five minutes and on main-branch changes. Scheduling and source availability are best-effort; neither a successful page check nor a new publication time establishes fresh votes. Source-as-of, check time and publication identity stay distinct. A failed source retains its last good data. Earlier source timestamps require explicit provenance review; correction histories remain attached. The browser checks the published snapshot each minute, with Pause/Cancel/Resume controls.
 
 `version.json` records the exact content hashes, source commit, snapshot identity and workflow run for the deployed artifact. It does not claim every candidate has been independently audited.
@@ -32,7 +34,7 @@ Serve this directory with a static HTTP server, then open index.html. No package
 
 ```text
 python -m http.server 8000
-node --test model.test.mjs carry_forward.test.mjs analysis.test.mjs big-board.test.mjs
+node --test model.test.mjs carry_forward.test.mjs analysis.test.mjs big-board.test.mjs ap-source.test.mjs
 python -m unittest discover -s . -p "test_update*.py"
 node verify_release.mjs
 node make_release.mjs --data data.json --out work/site
