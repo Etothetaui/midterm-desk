@@ -1,4 +1,4 @@
-export const VERSION = 'v0.0.0-dev';
+export const VERSION = 'v0.1.0-dev';
 export const PARTY_ORDER = Object.freeze(['D', 'R', 'I', 'L', 'G', 'OTHER']);
 
 const OFFICES = ['all', 'house', 'senate', 'governor'];
@@ -72,6 +72,43 @@ function validateSourceList(value, label, fail, {required = false, limit = 1000}
 
 const percentage = value => value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100);
 const firstPresent = (record, keys) => keys.find(key => Object.hasOwn(record,key));
+
+const SOURCE_CALL_STATUSES = new Set(['called','uncalled','retracted','unknown','unreported','unknown-source-clock','retained-unknown','retained-unknown-source-clock','stage-conflict']);
+const CALL_HISTORY_ACTIONS = new Set(['publisher-call-changed','publisher-winner-flag-observed','publisher-winner-flag-removed']);
+function validSourceCall(call,record){
+  return object(call)&&typeof call.candidateSourceId==='string'&&/^\d{1,20}$/.test(call.candidateSourceId)&&text(call.name)&&call.name.length<=500&&(call.party===null||typeof call.party==='string'&&call.party.length<=100)&&call.sourceName==='civicAPI decision desk'&&call.sourceUrl===record.sourceUrl&&call.calledAt===null&&call.certification===null&&timestamp(call.asOf)&&timestamp(call.firstObservedAt);
+}
+function provedSourceCall(record,race){
+  if(!object(record)||!object(race)||record.sourceCallStatus!=='called'||record.reported!==true||record.stage!=='general'||record.catalogStage!=='general'||race.stage!=='general'||typeof race.electionDate!=='string'||race.electionDate.slice(0,10)!=='2026-11-03'||record.electionDate!=='2026-11-03'||!validSourceCall(record.sourceCall,record)||record.sourceCall.asOf!==record.asOf||record.asOf.slice(0,10)<'2026-11-03'||!Array.isArray(record.candidates)||!record.candidates.length)return false;
+  const endpoints={house:'87524',senate:'87528',governor:'87535'};
+  if(record.sourceId!==`civicapi-${race.office}`||record.sourceUrl!==`https://civicapi.org/api/v2/race/${endpoints[race.office]}`||!/^\d{1,20}$/.test(record.sourceContestId||'')||record.detailUrl!==`https://civicapi.org/api/v2/race/${record.sourceContestId}`)return false;
+  const flagged=record.candidates.filter(c=>c?.sourceWinnerFlag===true),call=record.sourceCall;
+  return flagged.length===1&&record.candidates.every(c=>typeof c?.sourceWinnerFlag==='boolean'&&count(c.votes))&&record.candidates.some(c=>c.votes>0)&&flagged[0].sourceId===call.candidateSourceId&&flagged[0].name===call.name&&flagged[0].party===call.party;
+}
+
+// Calls belong to their publisher's contest identity. They never inherit a
+// forecast probability or a candidate mapping the source did not establish.
+export function activeSourceCall(record,race){
+  // A failed fetch does not retract an earlier supported publisher call.
+  return provedSourceCall(record,race)?record.sourceCall:null;
+}
+
+export function calledControlSummary(catalog){
+  const empty=()=>Object.fromEntries(PARTY_ORDER.map(p=>[p,0]));
+  const result={house:{total:435,currentTotal:435,called:empty(),unallocated:435,excluded:0,stale:0},senate:{total:100,currentTotal:35,called:empty(),carryover:empty(),carryoverKnown:false,unallocated:100,excluded:0,stale:0}};
+  const nativeParty={Democratic:'D',Republican:'R',Independent:'I',Libertarian:'L',Green:'G',D:'D',R:'R',I:'I',L:'L',G:'G'};
+  const seen=new Set();
+  for(const race of catalog?.races||[]){
+    const expected=EXPECTED_CONTESTS.get(race.id),bucket=result[race.office];
+    if(!bucket||!expected||!expected.seatVoting||race.seatVoting!==true||expected.office!==race.office||expected.state!==race.state||expected.kind!==race.kind||expected.district!==race.district||seen.has(race.id))continue;
+    seen.add(race.id);const record=catalog.nationalResultRecords?.[race.id];
+    const call=activeSourceCall(record,race);if(call){bucket.called[Object.hasOwn(nativeParty,call.party)?nativeParty[call.party]:'OTHER']++;if(String(record.fetchHealth?.status||'').startsWith('retained-'))bucket.stale++;}else if(record?.sourceCall)bucket.excluded++;
+  }
+  const carry=catalog?.senateCarryover;
+  if(carry?.verified===true&&['D','R','I'].every(p=>count(carry[p]))&&carry.D+carry.R+carry.I===65&&Array.isArray(carry.sources)&&carry.sources.length&&carry.sources.every(s=>safeSourceUrl(s?.url))){Object.assign(result.senate.carryover,{D:carry.D,R:carry.R,I:carry.I});result.senate.carryoverKnown=true;}
+  for(const value of Object.values(result)){value.calledSeats=Object.values(value.called).reduce((a,b)=>a+b,0);value.seats=Object.fromEntries(PARTY_ORDER.map(p=>[p,value.called[p]+(value.carryover?.[p]||0)]));value.unallocated=value.total-Object.values(value.seats).reduce((a,b)=>a+b,0);value.uncalledCurrent=value.currentTotal-value.calledSeats;}
+  return result;
+}
 
 function validatePollList(value, label, fail) {
   if (!Array.isArray(value) || value.length > 1000) { fail(`${label} must be an array with at most 1000 poll records.`); return; }
@@ -205,6 +242,38 @@ export function validateSnapshot(data, {requireCompleteCatalog = false} = {}) {
   if (object(data.coverage)) {
     const actual = catalogCounts(data.races);
     for (const key of Object.keys(EXPECTED)) if (count(data.coverage[key]) && actual[key] !== data.coverage[key]) fail(`coverage.${key} differs from catalog count.`);
+  }
+  if(data.nationalResultRecords!==undefined){
+    const records=data.nationalResultRecords;
+    const nationalSources={house:'87524',senate:'87528',governor:'87535'};
+    const sourceContests=new Set();
+    if(!object(records)||Object.keys(records).length>600)fail('Native national result records must be a bounded map.');
+    else for(const[id,record]of Object.entries(records)){
+      if(!ids.has(id)||!object(record)||typeof record.reported!=='boolean'||!safeSourceUrl(record.sourceUrl)||!safeSourceUrl(record.detailUrl)||!Array.isArray(record.candidates)||record.candidates.length>100){fail('Invalid native result record '+id);continue;}
+      const race=data.races.find(r=>r.id===id);
+      if(record.sourceId!==`civicapi-${race.office}`||record.sourceUrl!==`https://civicapi.org/api/v2/race/${nationalSources[race.office]}`||record.stage!=='general'||record.catalogStage!==race.stage)fail('Invalid native source office or stage '+id);
+      if(typeof record.sourceContestId!=='string'||!/^\d{1,20}$/.test(record.sourceContestId)||record.sourceRaceUrl!==`https://civicapi.org/api/v2/race/${record.sourceContestId}`||record.detailUrl!==record.sourceRaceUrl||sourceContests.has(record.sourceId+':'+record.sourceContestId))fail('Invalid or duplicate native source contest '+id);
+      sourceContests.add(record.sourceId+':'+record.sourceContestId);
+      if(!/^[a-f0-9]{64}$/.test(record.bodySha256||'')||!['stage-conflict','nominee-conflict','exact-candidate-match'].includes(record.matchStatus)||!record.candidates.length)fail('Invalid native result evidence '+id);
+      if(record.asOf!==null&&!timestamp(record.asOf))fail('Invalid native source clock '+id);
+      if(record.electionDate!=='2026-11-03')fail('Wrong native election date '+id);
+      const choices=new Set();
+      for(const c of record.candidates){if(!object(c)||typeof c.sourceId!=='string'||!/^\d{1,20}$/.test(c.sourceId)||choices.has(c.sourceId)||!text(c.name)||c.name.length>500||(c.party!==null&&(typeof c.party!=='string'||c.party.length>100))||!count(c.votes)||(c.sourceWinnerFlag!=null&&typeof c.sourceWinnerFlag!=='boolean'))fail('Invalid native result choice '+id);choices.add(c?.sourceId);}
+      const total=record.candidates.reduce((sum,c)=>sum+(c?.votes||0),0);
+      if(!Number.isSafeInteger(total)||record.reported!==record.candidates.some(c=>c?.votes>0))fail('Native reported state or aggregate count is invalid '+id);
+      const status=record.sourceCallStatus??'unknown';
+      if(!SOURCE_CALL_STATUSES.has(status))fail('Invalid native source call status '+id);
+      if(record.sourceCall!=null&&!validSourceCall(record.sourceCall,record))fail('Invalid native source call provenance '+id);
+      if(status==='called'&&!provedSourceCall(record,race))fail('Unproved contest-level source call '+id);
+      if(record.candidates.filter(c=>c?.sourceWinnerFlag===true).length>1)fail('Multiple native winner flags '+id);
+      if(record.checkedAt!=null&&!timestamp(record.checkedAt)||record.lastKnownSourceAsOf!=null&&!timestamp(record.lastKnownSourceAsOf))fail('Invalid native observation clock '+id);
+      const history=record.sourceCallHistory??[];
+      if(!Array.isArray(history)||history.length>1000)fail('Invalid native source call history '+id);
+      else for(const h of history){
+        if(!object(h)||!CALL_HISTORY_ACTIONS.has(h.action)||!timestamp(h.detectedAt)||!/^[a-f0-9]{64}$/.test(h.bodySha256||'')||(h.previousBodySha256!==null&&!/^[a-f0-9]{64}$/.test(h.previousBodySha256||''))||(h.previousCall!==null&&!validSourceCall(h.previousCall,record))||(h.newCall!==null&&!validSourceCall(h.newCall,record))||(h.sourceAsOf!=null&&!timestamp(h.sourceAsOf)))fail('Invalid native source call history event '+id);
+        else if(h.action==='publisher-winner-flag-removed'&&(h.previousCall===null||h.newCall!==null)||h.action==='publisher-winner-flag-observed'&&(h.previousCall!==null||h.newCall===null)||h.action==='publisher-call-changed'&&(h.previousCall===null||h.newCall===null))fail('Inconsistent native source call history transition '+id);
+      }
+    }
   }
   if (data.senateCarryover?.verified === true) {
     const carry = data.senateCarryover;

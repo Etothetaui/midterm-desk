@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {VERSION,PARTY_ORDER,createState,reducer,visibleRaces,selectedRace,selectedOutOfFilter,sanitizePreferences,scenarioTotals,summarizeCoverage,validateSnapshot,safeSourceUrl,formatNumber,marginLabel,partyName} from './model.mjs';
+import {VERSION,PARTY_ORDER,createState,reducer,visibleRaces,selectedRace,selectedOutOfFilter,sanitizePreferences,scenarioTotals,summarizeCoverage,validateSnapshot,safeSourceUrl,formatNumber,marginLabel,partyName,calledControlSummary,activeSourceCall} from './model.mjs';
 
 // Entirely synthetic fixtures: no value here is an actual election result.
 const candidate = (id, name = 'José Example', party = 'D') => ({id,name,party,incumbent:false,receipts:null,cash:0,financeAsOf:null});
@@ -10,6 +10,13 @@ function snapshot(races = [race('AL-H-1')], id = 'synthetic-1', extra = {}) {
 }
 const action = (state,type,fields={}) => reducer(state,{type,...fields});
 const syntheticPoll = () => ({id:'synthetic-poll',pollster:'Synthetic survey',startDate:'2026-02-28',endDate:'2026-03-01',publishedAt:'2026-03-02',population:'LV',sampleSize:null,sampleBasis:null,dem:52,rep:42,other:null,undecided:5,interval:null,sourceUrl:'https://example.test/synthetic-poll',corrections:[]});
+
+function nativeCallFixture(r,party='Democratic'){
+  const sourceUrl=`https://civicapi.org/api/v2/race/${{house:'87524',senate:'87528',governor:'87535'}[r.office]}`;
+  const sourceContestId=String(10000+['house','senate','governor'].indexOf(r.office)*2000+r.state.charCodeAt(0)*20+r.state.charCodeAt(1)+(r.district||0));
+  const asOf='2026-11-03T23:00:00Z';
+  return {sourceId:`civicapi-${r.office}`,sourceContestId,sourceUrl,sourceRaceUrl:`https://civicapi.org/api/v2/race/${sourceContestId}`,detailUrl:`https://civicapi.org/api/v2/race/${sourceContestId}`,bodySha256:'a'.repeat(64),stage:'general',catalogStage:r.stage,electionDate:'2026-11-03',reported:true,asOf,checkedAt:'2026-11-03T23:01:00Z',matchStatus:'nominee-conflict',candidates:[{sourceId:'101',name:'Synthetic publisher winner',party,votes:51,sourceWinnerFlag:true},{sourceId:'102',name:'Synthetic publisher runner up',party:'Republican',votes:49,sourceWinnerFlag:false}],sourceCallStatus:'called',sourceCall:{candidateSourceId:'101',name:'Synthetic publisher winner',party,sourceName:'civicAPI decision desk',sourceUrl,asOf,firstObservedAt:'2026-11-03T23:01:00Z',calledAt:null,certification:null}};
+}
 
 // Independent synthetic national fixture oracle. The geography is the 2026
 // register; candidate names, finance and results are deliberately fictional.
@@ -414,4 +421,52 @@ test('fresh poison payloads retain last good display and latest validated pendin
   assert.equal(state.snapshot.snapshotId,good.snapshotId);
   assert.equal(state.fetch.status,'error');
   assert.equal(state.pendingSnapshot,null);
+});
+
+test('supported native calls require winner identity, general stage, reported votes and an election-day clock',()=>{
+  const r=race('AL-H-01');const base=snapshot([r]);base.nationalResultRecords={[r.id]:nativeCallFixture(r)};
+  assert.equal(validateSnapshot(base).ok,true);
+  const corruptions=[
+    x=>x.sourceCall.name='Different person',x=>x.sourceCall.party='Independent',x=>x.sourceCall.candidateSourceId='999',
+    x=>x.sourceCall.sourceName='Invented desk',x=>x.sourceCall.certification='certified',x=>x.sourceCall.calledAt=x.asOf,
+    x=>x.sourceCall.firstObservedAt=null,x=>x.candidates[1].sourceWinnerFlag=null,x=>x.candidates[1].sourceWinnerFlag=true,
+    x=>x.candidates[0].sourceWinnerFlag='true',x=>{x.sourceCall.asOf='2026-11-02T23:00:00Z';x.asOf=x.sourceCall.asOf;},
+    x=>{x.reported=false;x.candidates.forEach(c=>c.votes=0);},x=>x.sourceCallStatus='certified',
+  ];
+  for(const mutate of corruptions){const bad=structuredClone(base);mutate(bad.nationalResultRecords[r.id]);assert.equal(validateSnapshot(bad).ok,false);}
+  const primary=structuredClone(base);primary.races[0].stage='primary';primary.nationalResultRecords[r.id].catalogStage='primary';assert.equal(validateSnapshot(primary).ok,false);
+});
+
+test('explicit call retraction removes seat allocation and retains an inspectable transition',()=>{
+  const r=race('AL-H-01');const before=snapshot([r]);const record=nativeCallFixture(r);before.nationalResultRecords={[r.id]:record};
+  assert.equal(calledControlSummary(before).house.called.D,1);
+  const after=structuredClone(before);const next=after.nationalResultRecords[r.id];next.sourceCallStatus='retracted';next.sourceCall=null;next.candidates.forEach(c=>c.sourceWinnerFlag=false);next.asOf='2026-11-03T23:05:00Z';next.sourceCallHistory=[{action:'publisher-winner-flag-removed',detectedAt:'2026-11-03T23:06:00Z',previousCall:structuredClone(record.sourceCall),newCall:null,previousBodySha256:record.bodySha256,bodySha256:'b'.repeat(64),sourceAsOf:next.asOf}];
+  assert.equal(validateSnapshot(after).ok,true);const summary=calledControlSummary(after);assert.equal(summary.house.called.D,0);assert.equal(summary.house.unallocated,435);
+  next.sourceCallHistory[0].newCall=record.sourceCall;assert.equal(validateSnapshot(after).ok,false);
+});
+
+test('network failure keeps last supported call while retained unknown statuses do not allocate seats',()=>{
+  const r=race('AL-H-01');const data=snapshot([r]);const record=nativeCallFixture(r);data.nationalResultRecords={[r.id]:record};
+  record.fetchHealth={status:'retained-error',checkedAt:'2026-11-03T23:05:00Z',reason:'Synthetic network failure'};
+  assert.equal(activeSourceCall(record,r)?.name,record.sourceCall.name);assert.equal(calledControlSummary(data).house.calledSeats,1);assert.equal(calledControlSummary(data).house.stale,1);
+  for(const status of ['retained-unknown','retained-unknown-source-clock','unknown','stage-conflict']){record.sourceCallStatus=status;assert.equal(activeSourceCall(record,r),null);assert.equal(calledControlSummary(data).house.calledSeats,0);}
+});
+
+test('called-seat arithmetic conserves 435 House and 100 Senate seats without caucus assumptions or duplicate counts',()=>{
+  const data=nationalFixture();data.senateCarryover={D:32,R:31,I:2,verified:true,sources:[{url:'https://www.senate.gov/senators/'}]};data.nationalResultRecords={};
+  const house=data.races.find(r=>r.id==='AL-H-01'),senate=data.races.find(r=>r.id==='AL-S-regular');data.nationalResultRecords[house.id]=nativeCallFixture(house);data.nationalResultRecords[senate.id]=nativeCallFixture(senate,'Independent');
+  house.results.call={candidateId:house.candidates[0].id}; // Undefined legacy call objects are not an alternate seat award.
+  data.races.push(structuredClone(house));
+  const s=calledControlSummary(data);assert.equal(s.house.calledSeats,1);assert.equal(s.house.unallocated,434);assert.equal(s.senate.called.I,1);assert.deepEqual([s.senate.seats.D,s.senate.seats.R,s.senate.seats.I,s.senate.unallocated],[32,31,3,34]);
+  for(const c of [s.house,s.senate])assert.equal(Object.values(c.seats).reduce((a,b)=>a+b,0)+c.unallocated,c.total);
+  delete data.senateCarryover;s.senate=calledControlSummary(data).senate;assert.equal(s.senate.carryoverKnown,false);assert.equal(s.senate.seats.I,1);assert.equal(s.senate.unallocated,99);
+});
+
+test('primary calls and territorial delegates never allocate chamber seats',()=>{
+  const primary=race('AL-H-01','house','AL',{stage:'primary'}),delegate=race('DC-H-00','house','DC',{kind:'delegate',seatVoting:false,district:0});const data=snapshot([primary,delegate]);data.nationalResultRecords={[primary.id]:nativeCallFixture(primary),[delegate.id]:nativeCallFixture(delegate)};assert.equal(calledControlSummary(data).house.calledSeats,0);
+});
+
+test('unrecognized source party names including prototype keys conserve calls in OTHER',()=>{
+ const r=race('AL-H-01');const d=snapshot([r]);
+ for(const party of ['__proto__','constructor','Nonpartisan']){d.nationalResultRecords={[r.id]:nativeCallFixture(r,party)};assert.equal(validateSnapshot(d).ok,true);const c=calledControlSummary(d).house;assert.equal(c.calledSeats,1);assert.equal(c.called.OTHER,1);assert.equal(c.unallocated,434);}
 });

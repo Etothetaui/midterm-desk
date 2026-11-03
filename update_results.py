@@ -20,6 +20,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unicodedata
 import urllib.parse
@@ -483,7 +484,8 @@ def main():
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output", type=Path)
     destination.add_argument("--probe", type=Path, help="Isolated probe snapshot path; never alters input")
-    parser.add_argument("--sources", nargs="+", choices=list(SOURCES), default=list(SOURCES))
+    parser.add_argument("--sources", nargs="+", choices=list(SOURCES), default=None,
+                        help="Explicit list uses the narrow legacy updater; omission runs the coordinated pipeline")
     parser.add_argument("--reviewed-revisions", type=Path,
                         help="Operator-reviewed revision records bound to source, clocks and exact body SHA256")
     args = parser.parse_args()
@@ -492,7 +494,11 @@ def main():
         parser.error("Probe destination must differ from input snapshot")
     snapshot = json.loads(args.input.read_text(encoding="utf-8"))
     reviews = json.loads(args.reviewed_revisions.read_text(encoding="utf-8")) if args.reviewed_revisions else None
-    output = update(snapshot, args.sources, reviewed_revisions=reviews)
+    if args.sources is None:
+        from update_pipeline import run_cli_pipeline
+        output = run_cli_pipeline(snapshot, target, input_path=args.input, probe=bool(args.probe), reviewed_revisions=reviews)
+    else:
+        output = update(snapshot, args.sources, reviewed_revisions=reviews)
     atomic_write(target, output)
     print(json.dumps({"output": str(target), "snapshotId": output["snapshotId"],
                       "sources": {key: {"status": value["status"], "error": value.get("error"), "matches": len(value.get("matchedRaceIds", []))}
@@ -500,4 +506,6 @@ def main():
 
 
 if __name__ == "__main__":
+    # All lazy pipeline imports must share this module's registries/classes.
+    sys.modules.setdefault("update_results", sys.modules[__name__])
     main()

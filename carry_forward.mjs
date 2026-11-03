@@ -1,15 +1,23 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validateSnapshot} from './model.mjs';
+import {VERSION,validateSnapshot} from './model.mjs';
 
 export function mergePublishedSnapshot(current,previous){
+  // This release changes presentation, not the schema-1 result contract.
+  // Admit the explicitly supported predecessor while validating all its fields;
+  // never discard already-published votes just because the software upgraded.
+  if(previous?.schemaVersion===1&&previous.version==='v0.0.0-dev'&&VERSION==='v0.1.0-dev')previous={...previous,version:VERSION};
   for(const [label,value]of [['current',current],['previous',previous]]){const result=validateSnapshot(value,{requireCompleteCatalog:true});if(!result.ok)throw new Error(`${label} snapshot rejected: ${result.errors.join('; ')}`);}
   const output=structuredClone(current);
   const byId=new Map(previous.races.map(r=>[r.id,r]));
   let retained=0;
   for(const race of output.races){const prior=byId.get(race.id);if(!prior?.results?.available)continue;const ids=new Set(race.candidates.map(c=>c.id));if(prior.results.votes.some(v=>!ids.has(v.candidateId)))throw new Error(`Catalog change conflicts with previously reported choices in ${race.id}; review required.`);race.results=structuredClone(prior.results);retained++;}
   if(previous.resultHealth&&typeof previous.resultHealth==='object')output.resultHealth=structuredClone(previous.resultHealth);
+  // Native publisher tables are independent of canonical candidate joins.
+  // Carry them too, otherwise a failed next fetch could reset visible counts
+  // to the repository's pre-reporting seed while canonical counts survive.
+  if(previous.nationalResultRecords)output.nationalResultRecords=structuredClone(previous.nationalResultRecords);
   const result=validateSnapshot(output,{requireCompleteCatalog:true});if(!result.ok)throw new Error('Merged snapshot rejected: '+result.errors.join('; '));
   return {snapshot:output,retained};
 }

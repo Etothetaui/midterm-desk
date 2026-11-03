@@ -1,6 +1,6 @@
 # Midterm Desk
 
-**v0.0.0-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
+**v0.1.0-dev** · A source-grounded desk for the November 3, 2026 U.S. midterms.
 
 Explore every state House seat, Senate contest and state governor contest, plus delegate and territorial governor contests in separate denominators. The catalog contains 514 contest records with source-attributed candidate inventories. Browse the race board and geographic tiles, compare candidates and reported finances, inspect individual polling, save a local watchlist, and build a clearly separate hypothetical seat scenario.
 
@@ -8,9 +8,17 @@ Explore every state House seat, Senate contest and state governor contest, plus 
 
 Contest-catalog completeness is distinct from an independent official-ballot audit. Candidate inventories are publisher compilations with original-source links and recorded corrections; the independent nationwide candidate audit remains incomplete. Known conflicts are corrected with preserved provenance. See [data sources](DATA-SOURCES.md).
 
-Reported vote counts, media calls, certification, polls and scenarios are separate. Missing counts remain unavailable. The initial pre-reporting official exports contain placeholders, so they do not produce invented zero-vote results. Official Arizona and North Carolina adapters admit only fully reconciled unofficial race counts. Other contests retain source links and explicit result-coverage gaps. No win probability or race call is inferred.
+Reported vote counts, media calls, certification, polls and scenarios are separate. Missing counts remain unavailable. Pre-reporting templates do not produce invented zero-vote results. Official Arizona and North Carolina adapters retain their strict reconciliation. The free civicAPI publisher integration supplies separate native records for506state contests and on-demand county detail. Candidate/stage conflicts remain visible; source-native counts never silently join to a different candidate. Eight supplementary delegate/territorial contests have no connected national feed. Numerical leaders never create calls.
 
 The four checked national generic-ballot observations retain field dates, population, sample basis and correction history. They do not supply enough compatible organizations for the declared descriptive average; the app shows individual observations instead. Candidate fundraising is reported receipts, not spending or voter support.
+
+## Polls, forecasts and Big Board tools
+
+Attributed Polling Forecast estimates cover the voting state contests. Inspect the modeled matchup, win frequency, projected margin/80%range, polling/fundamentals and method. General-election poll observations retain dates, populations, sponsors, raw shares and provenance. Original AtlasIntel public releases preserve exact decimals and valid-vote/first-choice distinctions. Unmodeled candidates and name conflicts stay explicit.
+
+Compare House/Senate control odds, seat ranges and history. Discover competitive races, compare up to four races, save a watchlist or seed a separate hypothetical margin-shift scenario. The Big Board adds state/county maps, historical2020/2024comparisons, county-return loading, pan/zoom, fullscreen, annotations and exact outstanding-vote arithmetic. Remaining-vote amounts require a source or an explicit user assumption. Missing exit-poll or ballot-method figures are not invented.
+
+See [methods](METHODOLOGY.md), [changes](CHANGELOG.md) and [data rights](DATA-SOURCES.md).
 
 ## Updates
 
@@ -24,12 +32,13 @@ Serve this directory with a static HTTP server, then open index.html. No package
 
 ```text
 python -m http.server 8000
-node --test model.test.mjs carry_forward.test.mjs
-python -m unittest discover -s . -p test_update_results.py
+node --test model.test.mjs carry_forward.test.mjs analysis.test.mjs big-board.test.mjs
+python -m unittest discover -s . -p "test_update*.py"
+node verify_release.mjs
 node make_release.mjs --data data.json --out work/site
 ```
 
-The updater can prepare a separate candidate snapshot:
+The coordinated updater prepares a separate candidate snapshot, refreshes all supported public sources and writes analytics health:
 
 ```text
 python update_results.py --input data.json --output work/next-data.json
@@ -42,3 +51,5 @@ For isolated UI exercises, `?exercise=1` exposes visibly synthetic correction/er
 ## Data and reuse
 
 Retain each source's rights and attribution. Original ballots, publisher text and graphics are not relicensed by this repository. Designated public data exports and source facts are used within their stated scope; see DATA-SOURCES.md for credits, transformations and limits.
+
+For a narrow official-source diagnostic, pass `--sources az-official nc-official`. Individual `update_vote_methods.py`, `update_national_results.py` and `refresh_analysis.py` entry points remain available. The coordinated command fetches each official source once and reuses its bytes for voting methods. The established Pages workflow runs it, and packaging verifies every adapter/view test, the exact catalog, analytics, software version and change documentation before deployment.
